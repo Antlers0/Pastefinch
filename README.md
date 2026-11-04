@@ -1,45 +1,51 @@
+<div align="center">
+
+<img src="ClipShotHistory/Resources/PastefinchIcon.png" width="120" alt="Pastefinch">
+
 # Pastefinch
 
-<p align="center">
-  <img src="ClipShotHistory/Resources/PastefinchIcon.png" width="128" height="128" alt="Pastefinch icon">
-</p>
+**Clipboard + screenshot history for your Mac menu bar.**
 
-<p align="center">
-  <b>English</b> · <a href="README.zh-CN.md">中文</a>
-</p>
+[English](README.md) · [中文](README.zh-CN.md)
 
-<p align="center">
-  A lightweight macOS menu bar app for clipboard history and screenshot history.
-</p>
+<br>
 
-<p align="center">
-  <img alt="Platform" src="https://img.shields.io/badge/platform-macOS%2013%2B-blue">
-  <img alt="Swift" src="https://img.shields.io/badge/Swift-5-orange">
-  <img alt="License" src="https://img.shields.io/badge/license-proprietary-lightgrey">
-  <a href="https://github.com/Antlers0/Pastefinch/releases"><img alt="Release" src="https://img.shields.io/github/v/release/Antlers0/Pastefinch?include_prereleases"></a>
-</p>
+[![macOS](https://img.shields.io/badge/macOS-13%2B-000000?logo=apple&logoColor=white)](https://github.com/Antlers0/Pastefinch)
+[![Swift](https://img.shields.io/badge/Swift-5-F05138?logo=swift&logoColor=white)](https://github.com/Antlers0/Pastefinch)
+[![Release](https://img.shields.io/github/v/release/Antlers0/Pastefinch?color=2ea44f)](https://github.com/Antlers0/Pastefinch/releases)
+[![Downloads](https://img.shields.io/github/downloads/Antlers0/Pastefinch/total?color=0969da)](https://github.com/Antlers0/Pastefinch/releases)
 
-## Features
+<br>
 
-| | |
-|---|---|
-| 📋 | **Clipboard history** — text, images, and files |
-| 🖼️ | **Screenshot history** — system screenshots and clipboard captures |
-| 🔍 | **Search** — quickly find what you copied |
-| ⌨️ | **Hotkey** — `⌥⌘V` to show or hide the panel |
-| 🗑️ | **Cleanup** — per-item delete, clear all, auto trim by count |
-| 🔒 | **Local only** — data stays on your Mac |
+[`Download`](https://github.com/Antlers0/Pastefinch/releases) · [`Source`](#build-from-source) · [`Privacy`](#privacy)
 
-## Requirements
+</div>
 
-- macOS 13.0 or later
-- Xcode 15+ (to build from source)
+---
+
+## Why Pastefinch
+
+macOS only keeps the latest clipboard item. Pastefinch quietly remembers what you copied and the screenshots you took — then brings them back with one hotkey.
+
+| | Capability | Detail |
+| :---: | :--- | :--- |
+| 📋 | Clipboard | Text, images, files — searchable history |
+| 🖼️ | Screenshots | Saved shots + clipboard captures |
+| ⌨️ | Hotkey | `⌥⌘V` to open or close the panel |
+| 🧹 | Cleanup | Delete one item, clear all, auto trim |
+| 🔒 | Private | Local storage only, no cloud sync |
+
+---
 
 ## Install
 
-Download the latest `Pastefinch.zip` from [Releases](https://github.com/Antlers0/Pastefinch/releases), unzip it, and move `Pastefinch.app` to Applications.
+1. Grab the latest **`Pastefinch.zip`** from [Releases](https://github.com/Antlers0/Pastefinch/releases)
+2. Unzip and drag **`Pastefinch.app`** into **Applications**
+3. Launch it — look for the bird icon in the menu bar
 
-If Gatekeeper blocks an unsigned build, open Finder → right-click the app → **Open**.
+> **Gatekeeper tip:** If macOS blocks an unsigned build, right-click the app in Finder → **Open**.
+
+---
 
 ## Build from source
 
@@ -54,13 +60,9 @@ xcodebuild \
   build
 ```
 
-Output:
-
 ```text
 DerivedData/Build/Products/Release/Pastefinch.app
 ```
-
-Package a zip:
 
 ```bash
 ditto -c -k --keepParent \
@@ -68,15 +70,23 @@ ditto -c -k --keepParent \
   Pastefinch.zip
 ```
 
+**Requirements:** macOS 13+ · Xcode 15+
+
+---
+
 ## Privacy
 
-History is stored locally at:
+All history lives on your Mac:
 
 ```text
 ~/Library/Application Support/Pastefinch/
 ```
 
-Pastefinch does not sync data to the cloud. Clipboard contents are stored in plain form — do not use it as a password manager. Clearing screenshot history does not delete original screenshot files on disk.
+No accounts. No analytics. No cloud.  
+Clipboard data is stored in plain form — don’t treat Pastefinch as a password vault.  
+Clearing screenshot history never deletes the original files on disk.
+
+---
 
 ## License
 

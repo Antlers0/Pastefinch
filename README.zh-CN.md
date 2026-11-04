@@ -1,45 +1,51 @@
+<div align="center">
+
+<img src="ClipShotHistory/Resources/PastefinchIcon.png" width="120" alt="Pastefinch">
+
 # Pastefinch
 
-<p align="center">
-  <img src="ClipShotHistory/Resources/PastefinchIcon.png" width="128" height="128" alt="Pastefinch 图标">
-</p>
+**菜单栏里的剪贴板历史 + 截图历史。**
 
-<p align="center">
-  <a href="README.md">English</a> · <b>中文</b>
-</p>
+[English](README.md) · [中文](README.zh-CN.md)
 
-<p align="center">
-  轻量的 macOS 菜单栏工具：剪贴板历史 + 截图历史。
-</p>
+<br>
 
-<p align="center">
-  <img alt="Platform" src="https://img.shields.io/badge/platform-macOS%2013%2B-blue">
-  <img alt="Swift" src="https://img.shields.io/badge/Swift-5-orange">
-  <img alt="License" src="https://img.shields.io/badge/license-proprietary-lightgrey">
-  <a href="https://github.com/Antlers0/Pastefinch/releases"><img alt="Release" src="https://img.shields.io/github/v/release/Antlers0/Pastefinch?include_prereleases"></a>
-</p>
+[![macOS](https://img.shields.io/badge/macOS-13%2B-000000?logo=apple&logoColor=white)](https://github.com/Antlers0/Pastefinch)
+[![Swift](https://img.shields.io/badge/Swift-5-F05138?logo=swift&logoColor=white)](https://github.com/Antlers0/Pastefinch)
+[![Release](https://img.shields.io/github/v/release/Antlers0/Pastefinch?color=2ea44f)](https://github.com/Antlers0/Pastefinch/releases)
+[![Downloads](https://img.shields.io/github/downloads/Antlers0/Pastefinch/total?color=0969da)](https://github.com/Antlers0/Pastefinch/releases)
 
-## 功能
+<br>
 
-| | |
-|---|---|
-| 📋 | **剪贴板历史** — 文本、图片、文件 |
-| 🖼️ | **截图历史** — 系统截图与复制到剪贴板的截图 |
-| 🔍 | **搜索** — 快速找回复制过的内容 |
-| ⌨️ | **快捷键** — `⌥⌘V` 呼出 / 收起面板 |
-| 🗑️ | **清理** — 单条删除、一键清空、按条数自动裁剪 |
-| 🔒 | **仅本地** — 数据保存在本机 |
+[`下载`](https://github.com/Antlers0/Pastefinch/releases) · [`源码构建`](#从源码构建) · [`隐私`](#隐私说明)
 
-## 环境要求
+</div>
 
-- macOS 13.0 或更高版本
-- 从源码构建需 Xcode 15+
+---
+
+## 为什么用 Pastefinch
+
+系统剪贴板只记得最后一次复制。Pastefinch 在后台记住你复制过的内容，以及截过的图——按一下快捷键就能找回。
+
+| | 能力 | 说明 |
+| :---: | :--- | :--- |
+| 📋 | 剪贴板 | 文本、图片、文件，可搜索 |
+| 🖼️ | 截图 | 系统存盘截图 + 复制到剪贴板的截图 |
+| ⌨️ | 快捷键 | `⌥⌘V` 呼出 / 收起面板 |
+| 🧹 | 清理 | 单条删除、一键清空、按条数自动裁剪 |
+| 🔒 | 隐私 | 仅本地存储，不同步云端 |
+
+---
 
 ## 安装
 
-从 [Releases](https://github.com/Antlers0/Pastefinch/releases) 下载最新的 `Pastefinch.zip`，解压后将 `Pastefinch.app` 拖入「应用程序」。
+1. 从 [Releases](https://github.com/Antlers0/Pastefinch/releases) 下载最新 **`Pastefinch.zip`**
+2. 解压后将 **`Pastefinch.app`** 拖入「应用程序」
+3. 打开后，在菜单栏找到小鸟图标即可使用
 
-若未签名构建被系统拦截，可在 Finder 中右键 App → **打开**。
+> **提示：** 若未签名构建被系统拦截，可在 Finder 中右键 App → **打开**。
+
+---
 
 ## 从源码构建
 
@@ -54,13 +60,9 @@ xcodebuild \
   build
 ```
 
-产物路径：
-
 ```text
 DerivedData/Build/Products/Release/Pastefinch.app
 ```
-
-打包 zip：
 
 ```bash
 ditto -c -k --keepParent \
@@ -68,15 +70,23 @@ ditto -c -k --keepParent \
   Pastefinch.zip
 ```
 
+**环境要求：** macOS 13+ · Xcode 15+
+
+---
+
 ## 隐私说明
 
-历史记录保存在：
+历史记录保存在本机：
 
 ```text
 ~/Library/Application Support/Pastefinch/
 ```
 
-Pastefinch 不会将数据同步到云端。剪贴板内容以明文存储，请勿当作密码管理器使用。清空截图历史不会删除磁盘上的系统截图原文件。
+无账号、无统计、无云同步。  
+剪贴板内容以明文存储，请勿当作密码管理器。  
+清空截图历史不会删除磁盘上的系统截图原文件。
+
+---
 
 ## 许可证
 
