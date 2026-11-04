@@ -18,6 +18,7 @@
 		A10000000000000000000009 /* ScreenshotListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000009 /* ScreenshotListView.swift */; };
 		A1000000000000000000000A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000A /* Assets.xcassets */; };
 		A1000000000000000000000D /* ColorParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000D /* ColorParser.swift */; };
+		A1000000000000000000000F /* PFTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000F /* PFTheme.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -34,6 +35,7 @@
 		A2000000000000000000000B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A2000000000000000000000C /* Pastefinch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Pastefinch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A2000000000000000000000D /* ColorParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorParser.swift; sourceTree = "<group>"; };
+		A2000000000000000000000F /* PFTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PFTheme.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -107,6 +109,7 @@
 		A40000000000000000000007 /* UI */ = {
 			isa = PBXGroup;
 			children = (
+				A2000000000000000000000F /* PFTheme.swift */,
 				A20000000000000000000007 /* PopoverRootView.swift */,
 				A20000000000000000000008 /* ClipboardListView.swift */,
 				A20000000000000000000009 /* ScreenshotListView.swift */,
@@ -202,6 +205,7 @@
 				A10000000000000000000008 /* ClipboardListView.swift in Sources */,
 				A10000000000000000000009 /* ScreenshotListView.swift in Sources */,
 				A1000000000000000000000D /* ColorParser.swift in Sources */,
+				A1000000000000000000000F /* PFTheme.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -256,7 +260,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.linziyang.Pastefinch;
 				PRODUCT_NAME = Pastefinch;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -279,7 +283,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.linziyang.Pastefinch;
 				PRODUCT_NAME = Pastefinch;
 				SWIFT_EMIT_LOC_STRINGS = YES;

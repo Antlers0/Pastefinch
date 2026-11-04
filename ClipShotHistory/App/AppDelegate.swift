@@ -130,7 +130,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupPanel() {
         let panel = KeyablePanel(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 520),
+            contentRect: NSRect(x: 0, y: 0, width: 392, height: 528),
             styleMask: [.borderless, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -148,14 +148,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let root = PopoverRootView(store: store) { [weak self] in
             self?.hidePanel()
         }
-        let hosting = NSHostingView(rootView: root)
-        hosting.frame = NSRect(x: 0, y: 0, width: 400, height: 520)
-        panel.contentView = hosting
-        panel.contentView?.wantsLayer = true
-        panel.contentView?.layer?.cornerRadius = 12
-        panel.contentView?.layer?.masksToBounds = true
-
+        panel.contentView = makeHostingView(root: root)
         self.panel = panel
+    }
+
+    private func makeHostingView(root: PopoverRootView) -> NSHostingView<PopoverRootView> {
+        let hosting = NSHostingView(rootView: root)
+        hosting.frame = NSRect(x: 0, y: 0, width: 392, height: 528)
+        hosting.appearance = NSAppearance(named: .aqua)
+        hosting.wantsLayer = true
+        hosting.layer?.cornerRadius = 14
+        hosting.layer?.masksToBounds = true
+        return hosting
     }
 
     @objc private func togglePanel() {
@@ -173,10 +177,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let root = PopoverRootView(store: store) { [weak self] in
             self?.hidePanel()
         }
-        panel.contentView = NSHostingView(rootView: root)
-        panel.contentView?.wantsLayer = true
-        panel.contentView?.layer?.cornerRadius = 12
-        panel.contentView?.layer?.masksToBounds = true
+        panel.contentView = makeHostingView(root: root)
 
         if let buttonWindow = button.window {
             let buttonRect = button.convert(button.bounds, to: nil)

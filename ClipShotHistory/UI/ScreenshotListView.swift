@@ -7,8 +7,8 @@ struct ScreenshotListView: View {
     var onSelect: (ScreenshotHistoryItem) -> Void
 
     private let columns = [
-        GridItem(.flexible(minimum: 0), spacing: 12),
-        GridItem(.flexible(minimum: 0), spacing: 12)
+        GridItem(.flexible(minimum: 0), spacing: 10),
+        GridItem(.flexible(minimum: 0), spacing: 10)
     ]
 
     var body: some View {
@@ -16,7 +16,7 @@ struct ScreenshotListView: View {
             emptyState
         } else {
             ScrollView {
-                LazyVGrid(columns: columns, spacing: 12) {
+                LazyVGrid(columns: columns, spacing: 10) {
                     ForEach(items) { item in
                         ScreenshotCell(
                             item: item,
@@ -37,24 +37,31 @@ struct ScreenshotListView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
             }
         }
     }
 
     private var emptyState: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "camera.viewfinder")
-                .font(.system(size: 28))
-                .foregroundStyle(.secondary)
+        VStack(spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(PFTheme.accentSoft)
+                    .frame(width: 52, height: 52)
+                Image(systemName: "camera.viewfinder")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundStyle(PFTheme.accent)
+                    .symbolRenderingMode(.hierarchical)
+            }
             Text("暂无截图记录")
-                .foregroundStyle(.secondary)
-            Text("⌘⇧3/4 存盘，或 ⌃⌘⇧3/4 复制到剪贴板，都会出现在这里")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(PFTheme.inkSecondary)
+            Text("⌘⇧3/4 存盘，或 ⌃⌘⇧3/4 复制到剪贴板")
+                .font(.system(size: 11))
+                .foregroundStyle(PFTheme.inkTertiary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal)
+                .padding(.horizontal, 24)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -66,56 +73,66 @@ private struct ScreenshotCell: View {
     var onSelect: () -> Void
     var onDelete: () -> Void
 
-    private let thumbHeight: CGFloat = 110
+    @State private var hovering = false
+    private let thumbHeight: CGFloat = 104
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 7) {
             ZStack(alignment: .topTrailing) {
                 Button(action: onSelect) {
                     thumbnail
                 }
                 .buttonStyle(.plain)
 
-                Button(action: onDelete) {
-                    Image(systemName: "trash")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .padding(6)
-                        .background(Circle().fill(Color.black.opacity(0.45)))
-                }
-                .buttonStyle(.plain)
-                .help("删除")
-                .padding(8)
+                PFGhostIconButton(
+                    systemName: "trash",
+                    tint: .white,
+                    help: "删除",
+                    action: onDelete
+                )
+                .padding(6)
+                .background(
+                    Circle()
+                        .fill(Color.black.opacity(hovering ? 0.45 : 0))
+                )
+                .opacity(hovering ? 1 : 0)
+                .padding(6)
+                .animation(.easeOut(duration: 0.12), value: hovering)
             }
 
             Button(action: onSelect) {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(item.fileName)
-                        .font(.caption2)
+                        .font(.system(size: 10.5, weight: .medium))
                         .lineLimit(1)
                         .truncationMode(.middle)
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(PFTheme.ink)
                     Text(item.createdAt.formatted(date: .omitted, time: .shortened))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(PFTheme.inkTertiary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }
-        .padding(10)
+        .padding(8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(nsColor: .controlBackgroundColor).opacity(0.65))
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(hovering ? PFTheme.rowHover : PFTheme.surface)
         )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(hovering ? PFTheme.accent.opacity(0.28) : PFTheme.hairline, lineWidth: 1)
+        )
+        .onHover { hovering = $0 }
+        .animation(.easeOut(duration: 0.12), value: hovering)
         .clipped()
     }
 
-    /// Use overlay so `.scaledToFill` cannot expand the cell layout width.
     private var thumbnail: some View {
-        Color(nsColor: .controlBackgroundColor)
+        PFTheme.surfaceMuted
             .frame(height: thumbHeight)
             .frame(maxWidth: .infinity)
             .overlay {
@@ -130,12 +147,16 @@ private struct ScreenshotCell: View {
                             .scaledToFill()
                     } else {
                         Image(systemName: "photo")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(PFTheme.inkTertiary)
                     }
                 }
             }
             .clipped()
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .contentShape(RoundedRectangle(cornerRadius: 8))
+            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .strokeBorder(PFTheme.hairline, lineWidth: 1)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
     }
 }

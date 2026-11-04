@@ -11,7 +11,7 @@ struct ClipboardListView: View {
             emptyState
         } else {
             ScrollView {
-                LazyVStack(spacing: 10) {
+                LazyVStack(spacing: 2) {
                     ForEach(items) { item in
                         ClipboardRow(
                             item: item,
@@ -47,22 +47,29 @@ struct ClipboardListView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 8)
             }
         }
     }
 
     private var emptyState: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "doc.on.clipboard")
-                .font(.system(size: 28))
-                .foregroundStyle(.secondary)
+        VStack(spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(PFTheme.accentSoft)
+                    .frame(width: 52, height: 52)
+                Image(systemName: "doc.on.clipboard")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundStyle(PFTheme.accent)
+                    .symbolRenderingMode(.hierarchical)
+            }
             Text("暂无剪贴板记录")
-                .foregroundStyle(.secondary)
-            Text("复制文本或图片后会出现在这里")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(PFTheme.inkSecondary)
+            Text("复制文本、图片或文件后会出现在这里")
+                .font(.system(size: 11))
+                .foregroundStyle(PFTheme.inkTertiary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -75,6 +82,8 @@ private struct ClipboardRow: View {
     var onDelete: () -> Void
     var onTogglePin: () -> Void
 
+    @State private var hovering = false
+
     private var parsedColor: ParsedColor? {
         guard item.kind == .text else { return nil }
         return ColorParser.parse(item.text ?? "")
@@ -83,36 +92,41 @@ private struct ClipboardRow: View {
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
             Button(action: onSelect) {
-                HStack(alignment: .top, spacing: 12) {
+                HStack(alignment: .center, spacing: 10) {
                     thumbnail
-                        .frame(width: 44, height: 44)
-                        .background(Color(nsColor: .controlBackgroundColor))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .strokeBorder(Color.primary.opacity(parsedColor == nil ? 0 : 0.12), lineWidth: 1)
-                        )
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(item.previewText)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(item.previewText.isEmpty ? " " : item.previewText)
                             .lineLimit(2)
                             .multilineTextAlignment(.leading)
-                            .font(.system(size: 13))
-                            .foregroundStyle(.primary)
+                            .font(.system(size: 12.5, weight: .medium))
+                            .foregroundStyle(PFTheme.ink)
+
                         HStack(spacing: 6) {
                             if item.isPinned {
-                                Image(systemName: "pin.fill")
-                                    .font(.system(size: 9))
-                                    .foregroundStyle(.orange)
+                                HStack(spacing: 3) {
+                                    Image(systemName: "pin.fill")
+                                        .font(.system(size: 8, weight: .bold))
+                                    Text("PIN")
+                                        .font(.system(size: 9, weight: .bold, design: .rounded))
+                                }
+                                .foregroundStyle(PFTheme.pin)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(Capsule().fill(PFTheme.pin.opacity(0.12)))
                             }
                             if let color = parsedColor {
                                 Text(color.hex)
-                                    .font(.caption2.monospaced())
-                                    .foregroundStyle(.secondary)
+                                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                                    .foregroundStyle(PFTheme.inkSecondary)
+                            } else {
+                                Text(kindLabel)
+                                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                                    .foregroundStyle(PFTheme.inkTertiary)
                             }
-                            Text(item.createdAt.formatted(date: .abbreviated, time: .shortened))
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+                            Text(item.createdAt.formatted(date: .omitted, time: .shortened))
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundStyle(PFTheme.inkTertiary)
                         }
                     }
                     Spacer(minLength: 0)
@@ -121,66 +135,89 @@ private struct ClipboardRow: View {
             }
             .buttonStyle(.plain)
 
-            Button(action: onTogglePin) {
-                Image(systemName: item.isPinned ? "pin.fill" : "pin")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(item.isPinned ? Color.orange : Color.secondary)
-                    .frame(width: 28, height: 28)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .help(item.isPinned ? "取消固定" : "固定")
+            HStack(spacing: 2) {
+                PFGhostIconButton(
+                    systemName: item.isPinned ? "pin.fill" : "pin",
+                    tint: item.isPinned ? PFTheme.pin : PFTheme.inkSecondary,
+                    help: item.isPinned ? "取消固定" : "固定",
+                    action: onTogglePin
+                )
+                .opacity(hovering || item.isPinned ? 1 : 0)
 
-            Button(action: onDelete) {
-                Image(systemName: "trash")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 28, height: 28)
-                    .contentShape(Rectangle())
+                PFGhostIconButton(
+                    systemName: "trash",
+                    tint: PFTheme.inkSecondary,
+                    help: "删除",
+                    action: onDelete
+                )
+                .opacity(hovering ? 1 : 0)
             }
-            .buttonStyle(.plain)
-            .help("删除")
+            .animation(.easeOut(duration: 0.12), value: hovering)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 8)
         .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(nsColor: .controlBackgroundColor).opacity(0.65))
+            RoundedRectangle(cornerRadius: PFTheme.rowCorner, style: .continuous)
+                .fill(backgroundFill)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(item.isPinned ? Color.orange.opacity(0.35) : Color.clear, lineWidth: 1)
+            RoundedRectangle(cornerRadius: PFTheme.rowCorner, style: .continuous)
+                .strokeBorder(item.isPinned ? PFTheme.accent.opacity(0.22) : .clear, lineWidth: 1)
         )
+        .onHover { hovering = $0 }
+    }
+
+    private var backgroundFill: Color {
+        if hovering { return PFTheme.rowHover }
+        if item.isPinned { return PFTheme.rowPinned }
+        return PFTheme.rowIdle
+    }
+
+    private var kindLabel: String {
+        switch item.kind {
+        case .text: return "TEXT"
+        case .image: return "IMAGE"
+        case .file: return "FILE"
+        }
     }
 
     @ViewBuilder
     private var thumbnail: some View {
         switch item.kind {
         case .image:
-            if let name = item.imageFileName,
-               let image = store.loadNSImage(named: name) {
-                Image(nsImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } else {
-                Image(systemName: "photo")
-                    .foregroundStyle(.secondary)
+            Group {
+                if let name = item.imageFileName,
+                   let image = store.loadNSImage(named: name) {
+                    Image(nsImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } else {
+                    Image(systemName: "photo")
+                        .foregroundStyle(.secondary)
+                }
             }
+            .frame(width: 36, height: 36)
+            .background(PFTheme.surfaceMuted)
+            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .strokeBorder(PFTheme.hairline, lineWidth: 1)
+            )
         case .text:
             if let color = parsedColor {
-                RoundedRectangle(cornerRadius: 6)
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
                     .fill(color.swiftUIColor)
+                    .frame(width: 36, height: 36)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .strokeBorder(Color.primary.opacity(0.15), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            .strokeBorder(PFTheme.hairline, lineWidth: 1)
                     )
+                    .shadow(color: color.swiftUIColor.opacity(0.28), radius: 4, y: 1)
             } else {
-                Image(systemName: "text.alignleft")
-                    .foregroundStyle(.secondary)
+                PFIconBadge(systemName: "text.alignleft", tint: PFTheme.accent)
             }
         case .file:
-            Image(systemName: "doc")
-                .foregroundStyle(.secondary)
+            PFIconBadge(systemName: "doc", tint: PFTheme.inkSecondary)
         }
     }
 }

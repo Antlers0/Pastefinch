@@ -2,10 +2,24 @@ import SwiftUI
 import AppKit
 
 enum HistoryTab: String, CaseIterable, Identifiable {
-    case clipboard = "剪贴板"
-    case screenshots = "截图"
+    case clipboard
+    case screenshots
 
     var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .clipboard: return "剪贴板"
+        case .screenshots: return "截图"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .clipboard: return "doc.on.clipboard"
+        case .screenshots: return "camera.viewfinder"
+        }
+    }
 }
 
 struct PopoverRootView: View {
@@ -19,80 +33,191 @@ struct PopoverRootView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
+            PFHairline()
             content
-            Divider()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .id(tab)
+            PFHairline()
             footer
         }
-        .frame(width: 400, height: 520)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .frame(width: 392, height: 528)
+        .background {
+            ZStack {
+                PFTheme.panel
+                LinearGradient(
+                    colors: [
+                        PFTheme.panelTint,
+                        PFTheme.panel,
+                        Color.white
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: PFTheme.panelCorner, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: PFTheme.panelCorner, style: .continuous)
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            Color.white,
+                            PFTheme.hairline,
+                            PFTheme.accent.opacity(0.22)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+        )
+        .preferredColorScheme(.light)
+        .environment(\.colorScheme, .light)
     }
 
     private var header: some View {
-        VStack(spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Pastefinch")
-                    .font(.headline)
-                Spacer()
+        VStack(spacing: 12) {
+            HStack(spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(PFTheme.accentSoft)
+                    Image(systemName: "bird")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(PFTheme.accent)
+                        .symbolRenderingMode(.hierarchical)
+                }
+                .frame(width: 28, height: 28)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Pastefinch")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .tracking(0.2)
+                        .foregroundStyle(PFTheme.ink)
+                    Text("LOCAL · HISTORY")
+                        .font(.system(size: 9, weight: .semibold, design: .rounded))
+                        .tracking(1.2)
+                        .foregroundStyle(PFTheme.inkTertiary)
+                }
+
+                Spacer(minLength: 8)
+
                 todayStatsChip
-                Button {
-                    onClose()
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .help("关闭")
+
+                PFGhostIconButton(systemName: "xmark", help: "关闭", action: onClose)
             }
 
-            Picker("", selection: $tab) {
-                ForEach(HistoryTab.allCases) { item in
-                    Text(item.rawValue).tag(item)
-                }
-            }
-            .pickerStyle(.segmented)
+            tabSwitcher
 
-            HStack {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
-                TextField(tab == .clipboard ? "搜索文本…" : "搜索文件名…", text: $searchText)
-                    .textFieldStyle(.plain)
-                    .focused($isSearchFocused)
-                if !searchText.isEmpty {
-                    Button {
-                        searchText = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(8)
-            .background(RoundedRectangle(cornerRadius: 8).fill(Color(nsColor: .controlBackgroundColor)))
-            .contentShape(Rectangle())
-            .onTapGesture {
-                isSearchFocused = true
-            }
+            searchField
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 14)
         .padding(.top, 14)
         .padding(.bottom, 12)
     }
 
-    private var todayStatsChip: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "chart.bar.fill")
-                .font(.system(size: 10, weight: .semibold))
-            Text("今日 \(store.todayClipboardCount)+\(store.todayScreenshotCount)")
-                .font(.caption2.monospacedDigit())
+    private var tabSwitcher: some View {
+        HStack(spacing: 4) {
+            ForEach(HistoryTab.allCases) { item in
+                tabChip(item)
+            }
         }
-        .foregroundStyle(.secondary)
+        .padding(3)
+        .background(
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .fill(PFTheme.surfaceMuted)
+        )
+    }
+
+    private func tabChip(_ item: HistoryTab) -> some View {
+        let selected = tab == item
+        return HStack(spacing: 6) {
+            Image(systemName: item.symbol)
+                .font(.system(size: 11, weight: .semibold))
+            Text(item.title)
+                .font(.system(size: 12, weight: .medium))
+        }
+        .foregroundStyle(selected ? PFTheme.ink : PFTheme.inkSecondary)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 7)
+        .background(
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .fill(selected ? PFTheme.surface : Color.clear)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .strokeBorder(selected ? PFTheme.accent.opacity(0.45) : Color.clear, lineWidth: 1)
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            guard tab != item else { return }
+            tab = item
+        }
+        .accessibilityAddTraits(selected ? .isSelected : [])
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel(item.title)
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(PFTheme.inkTertiary)
+            TextField(tab == .clipboard ? "搜索文本" : "搜索文件名", text: $searchText)
+                .textFieldStyle(.plain)
+                .font(.system(size: 13))
+                .foregroundStyle(PFTheme.ink)
+                .focused($isSearchFocused)
+            if !searchText.isEmpty {
+                Button {
+                    searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 12))
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(PFTheme.inkTertiary)
+                }
+                .buttonStyle(.plain)
+            } else {
+                PFKeyCap(text: "⌥⌘V")
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: PFTheme.controlCorner, style: .continuous)
+                .fill(PFTheme.surface)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: PFTheme.controlCorner, style: .continuous)
+                .strokeBorder(
+                    isSearchFocused ? PFTheme.accent.opacity(0.45) : PFTheme.hairline,
+                    lineWidth: 1
+                )
+        )
+        .contentShape(Rectangle())
+        .onTapGesture { isSearchFocused = true }
+        .animation(.easeOut(duration: 0.15), value: isSearchFocused)
+    }
+
+    private var todayStatsChip: some View {
+        HStack(spacing: 5) {
+            Circle()
+                .fill(PFTheme.accent)
+                .frame(width: 5, height: 5)
+                .shadow(color: PFTheme.accent.opacity(0.55), radius: 3, y: 0)
+            Text("今日 \(store.todayClipboardCount)+\(store.todayScreenshotCount)")
+                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                .foregroundStyle(PFTheme.inkSecondary)
+        }
         .padding(.horizontal, 8)
-        .padding(.vertical, 4)
+        .padding(.vertical, 5)
         .background(
             Capsule(style: .continuous)
-                .fill(Color(nsColor: .controlBackgroundColor))
+                .fill(PFTheme.surface)
+        )
+        .overlay(
+            Capsule(style: .continuous)
+                .strokeBorder(PFTheme.hairline, lineWidth: 1)
         )
         .help("今日捕获：剪贴板 \(store.todayClipboardCount) · 截图 \(store.todayScreenshotCount)")
     }
@@ -109,6 +234,7 @@ struct PopoverRootView: View {
                     onClose()
                 }
             )
+            .transition(.opacity)
         case .screenshots:
             ScreenshotListView(
                 items: filteredScreenshots,
@@ -118,47 +244,51 @@ struct PopoverRootView: View {
                     onClose()
                 }
             )
+            .transition(.opacity)
         }
     }
 
     private var footer: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(tab == .clipboard
-                     ? "\(store.clipboardItems.count)/\(HistoryStore.clipboardLimit)"
-                     : "\(store.screenshotItems.count)/\(HistoryStore.screenshotLimit)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text("⌥⌘V")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                Spacer()
-                Text("今日 剪贴板 \(store.todayClipboardCount) · 截图 \(store.todayScreenshotCount)")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            HStack {
-                Spacer()
-                Button(tab == .clipboard ? "清空剪贴板历史" : "清空截图历史") {
-                    if tab == .clipboard {
-                        store.clearClipboardHistory()
-                    } else {
-                        store.clearScreenshotHistory()
-                    }
+        HStack(spacing: 10) {
+            Text(capacityLabel)
+                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                .foregroundStyle(PFTheme.inkTertiary)
+
+            Spacer(minLength: 0)
+
+            Button(tab == .clipboard ? "清空" : "清空截图") {
+                if tab == .clipboard {
+                    store.clearClipboardHistory()
+                } else {
+                    store.clearScreenshotHistory()
                 }
-                .controlSize(.small)
-                .help(tab == .clipboard
-                      ? "清空未固定项；固定项会保留"
-                      : "只清除本 App 记录，不删除系统截图文件")
-                Button("退出") {
-                    NSApp.terminate(nil)
-                }
-                .controlSize(.small)
             }
+            .buttonStyle(.plain)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(PFTheme.inkSecondary)
+            .help(tab == .clipboard
+                  ? "清空未固定项；固定项会保留"
+                  : "只清除本 App 记录，不删除系统截图文件")
+
+            Text("·")
+                .foregroundStyle(PFTheme.inkTertiary)
+
+            Button("退出") {
+                NSApp.terminate(nil)
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(PFTheme.inkSecondary)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 14)
         .padding(.vertical, 10)
+    }
+
+    private var capacityLabel: String {
+        if tab == .clipboard {
+            return "\(store.clipboardItems.count)/\(HistoryStore.clipboardLimit)  ·  今日 \(store.todayClipboardCount)"
+        }
+        return "\(store.screenshotItems.count)/\(HistoryStore.screenshotLimit)  ·  今日 \(store.todayScreenshotCount)"
     }
 
     private var filteredClipboard: [ClipboardHistoryItem] {
