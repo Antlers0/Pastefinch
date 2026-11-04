@@ -40,23 +40,29 @@ final class ClipboardMonitor {
         }
 
         let fileURLs = readFileURLs(from: pb)
+
+        // Finder copy of a system screenshot file → Screenshots tab.
         if let shot = fileURLs.first(where: { ScreenshotWatcher.isScreenshotCandidate($0) }) {
             store.addScreenshot(at: shot)
             return
         }
 
-        if let image = readImage(from: pb), isScreenshotImagePayload(pb, fileURLs: fileURLs) {
+        // Prefer file records when Finder (or others) put file URLs on the pasteboard.
+        // Image/PDF copies often also include a preview image — don't swallow them as images.
+        if !fileURLs.isEmpty {
+            for url in fileURLs {
+                store.addClipboardFile(path: url.path)
+            }
+            return
+        }
+
+        if let image = readImage(from: pb), isScreenshotImagePayload(pb) {
             store.addScreenshot(from: image)
             return
         }
 
         if let image = readImage(from: pb) {
             store.addClipboardImage(image)
-            return
-        }
-
-        if let first = fileURLs.first {
-            store.addClipboardFile(path: first.path)
             return
         }
 
@@ -67,15 +73,7 @@ final class ClipboardMonitor {
 
     /// System clipboard screenshots (⌃⌘⇧3/4) are typically image-only: png/tiff, no HTML/RTF/URL.
     /// Copied images from browsers usually also carry HTML / URL flavors.
-    private func isScreenshotImagePayload(_ pb: NSPasteboard, fileURLs: [URL]) -> Bool {
-        if fileURLs.contains(where: { ScreenshotWatcher.isScreenshotCandidate($0) }) {
-            return true
-        }
-        // Non-screenshot file copy should stay on clipboard as file, not become a screenshot.
-        if !fileURLs.isEmpty {
-            return false
-        }
-
+    private func isScreenshotImagePayload(_ pb: NSPasteboard) -> Bool {
         if let text = pb.string(forType: .string)?.trimmingCharacters(in: .whitespacesAndNewlines),
            !text.isEmpty {
             return false
@@ -102,9 +100,44 @@ final class ClipboardMonitor {
     }
 
     private func readFileURLs(from pb: NSPasteboard) -> [URL] {
-        (pb.readObjects(forClasses: [NSURL.self], options: [
+        if let urls = pb.readObjects(forClasses: [NSURL.self], options: [
             .urlReadingFileURLsOnly: true
-        ]) as? [URL])?.filter(\.isFileURL) ?? []
+        ]) as? [URL] {
+            let files = urls.filter(\.isFileURL)
+            if !files.isEmpty { return uniqueFiles(files) }
+        }
+
+        // Finder legacy type: NSFilenamesPboardType
+        let filenamesType = NSPasteboard.PasteboardType("NSFilenamesPboardType")
+        if let paths = pb.propertyList(forType: filenamesType) as? [String], !paths.isEmpty {
+            return uniqueFiles(paths.map { URL(fileURLWithPath: $0) })
+        }
+
+        if let data = pb.data(forType: .fileURL),
+           let raw = String(data: data, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           let url = URL(string: raw), url.isFileURL {
+            return [url]
+        }
+
+        if let raw = pb.string(forType: .fileURL)?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           let url = URL(string: raw), url.isFileURL {
+            return [url]
+        }
+
+        return []
+    }
+
+    private func uniqueFiles(_ urls: [URL]) -> [URL] {
+        var seen = Set<String>()
+        var result: [URL] = []
+        for url in urls {
+            let path = url.standardizedFileURL.path
+            guard seen.insert(path).inserted else { continue }
+            result.append(url.standardizedFileURL)
+        }
+        return result
     }
 
     private func readImage(from pb: NSPasteboard) -> NSImage? {

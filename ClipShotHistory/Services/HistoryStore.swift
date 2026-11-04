@@ -210,14 +210,15 @@ final class HistoryStore: ObservableObject {
         persist()
     }
 
-    func clearClipboardHistory() {
-        let pinned = clipboardItems.filter(\.isPinned)
-        for item in clipboardItems where item.kind == .image && !item.isPinned {
-            if let name = item.imageFileName {
+    func clearClipboardHistory(kinds: Set<ClipboardContentKind>? = nil) {
+        clipboardItems = clipboardItems.filter { item in
+            if item.isPinned { return true }
+            if let kinds, !kinds.contains(item.kind) { return true }
+            if item.kind == .image, let name = item.imageFileName {
                 try? fileManager.removeItem(at: imageURL(for: name))
             }
+            return false
         }
-        clipboardItems = pinned
         persist()
     }
 

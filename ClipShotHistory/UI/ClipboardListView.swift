@@ -5,6 +5,9 @@ struct ClipboardListView: View {
     let items: [ClipboardHistoryItem]
     @ObservedObject var store: HistoryStore
     var onSelect: (ClipboardHistoryItem) -> Void
+    var emptyIcon: String = "doc.on.clipboard"
+    var emptyTitle: String = "暂无剪贴板记录"
+    var emptySubtitle: String = "复制文本或图片后会出现在这里"
 
     var body: some View {
         if items.isEmpty {
@@ -59,17 +62,19 @@ struct ClipboardListView: View {
                 Circle()
                     .fill(PFTheme.accentSoft)
                     .frame(width: 52, height: 52)
-                Image(systemName: "doc.on.clipboard")
+                Image(systemName: emptyIcon)
                     .font(.system(size: 20, weight: .medium))
                     .foregroundStyle(PFTheme.accent)
                     .symbolRenderingMode(.hierarchical)
             }
-            Text("暂无剪贴板记录")
+            Text(emptyTitle)
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(PFTheme.inkSecondary)
-            Text("复制文本、图片或文件后会出现在这里")
+            Text(emptySubtitle)
                 .font(.system(size: 11))
                 .foregroundStyle(PFTheme.inkTertiary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -119,6 +124,12 @@ private struct ClipboardRow: View {
                                 Text(color.hex)
                                     .font(.system(size: 10, weight: .medium, design: .monospaced))
                                     .foregroundStyle(PFTheme.inkSecondary)
+                            } else if item.kind == .file, let path = item.filePath {
+                                Text(Self.shortParentPath(path))
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundStyle(PFTheme.inkTertiary)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
                             } else {
                                 Text(kindLabel)
                                     .font(.system(size: 10, weight: .medium, design: .rounded))
@@ -217,7 +228,37 @@ private struct ClipboardRow: View {
                 PFIconBadge(systemName: "text.alignleft", tint: PFTheme.accent)
             }
         case .file:
-            PFIconBadge(systemName: "doc", tint: PFTheme.inkSecondary)
+            if let path = item.filePath {
+                Image(nsImage: Self.fileIcon(for: path))
+                    .resizable()
+                    .interpolation(.high)
+                    .frame(width: 32, height: 32)
+                    .frame(width: 36, height: 36)
+                    .background(PFTheme.surfaceMuted)
+                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            .strokeBorder(PFTheme.hairline, lineWidth: 1)
+                    )
+            } else {
+                PFIconBadge(systemName: "doc", tint: PFTheme.inkSecondary)
+            }
         }
+    }
+
+    private static func fileIcon(for path: String) -> NSImage {
+        let icon = NSWorkspace.shared.icon(forFile: path)
+        icon.size = NSSize(width: 32, height: 32)
+        return icon
+    }
+
+    private static func shortParentPath(_ path: String) -> String {
+        let url = URL(fileURLWithPath: path)
+        let parent = url.deletingLastPathComponent().path
+        let home = NSHomeDirectory()
+        if parent.hasPrefix(home) {
+            return "~" + parent.dropFirst(home.count)
+        }
+        return parent
     }
 }

@@ -3,6 +3,7 @@ import AppKit
 
 enum HistoryTab: String, CaseIterable, Identifiable {
     case clipboard
+    case files
     case screenshots
 
     var id: String { rawValue }
@@ -10,6 +11,7 @@ enum HistoryTab: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .clipboard: return "剪贴板"
+        case .files: return "文件"
         case .screenshots: return "截图"
         }
     }
@@ -17,7 +19,16 @@ enum HistoryTab: String, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .clipboard: return "doc.on.clipboard"
+        case .files: return "doc"
         case .screenshots: return "camera.viewfinder"
+        }
+    }
+
+    var searchPlaceholder: String {
+        switch self {
+        case .clipboard: return "搜索文本或内容"
+        case .files: return "搜索文件名或路径"
+        case .screenshots: return "搜索截图名称"
         }
     }
 }
@@ -130,15 +141,17 @@ struct PopoverRootView: View {
 
     private func tabChip(_ item: HistoryTab) -> some View {
         let selected = tab == item
-        return HStack(spacing: 6) {
+        return HStack(spacing: 4) {
             Image(systemName: item.symbol)
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: 10, weight: .semibold))
             Text(item.title)
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: 11, weight: .medium))
+                .lineLimit(1)
         }
         .foregroundStyle(selected ? PFTheme.ink : PFTheme.inkSecondary)
         .frame(maxWidth: .infinity)
         .padding(.vertical, 7)
+        .padding(.horizontal, 2)
         .background(
             RoundedRectangle(cornerRadius: 7, style: .continuous)
                 .fill(selected ? PFTheme.surface : Color.clear)
@@ -150,6 +163,7 @@ struct PopoverRootView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             guard tab != item else { return }
+            searchText = ""
             tab = item
         }
         .accessibilityAddTraits(selected ? .isSelected : [])
@@ -162,11 +176,12 @@ struct PopoverRootView: View {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(PFTheme.inkTertiary)
-            TextField(tab == .clipboard ? "搜索文本" : "搜索文件名", text: $searchText)
+            TextField(tab.searchPlaceholder, text: $searchText)
                 .textFieldStyle(.plain)
                 .font(.system(size: 13))
                 .foregroundStyle(PFTheme.ink)
                 .focused($isSearchFocused)
+                .id(tab.searchPlaceholder)
             if !searchText.isEmpty {
                 Button {
                     searchText = ""
@@ -232,7 +247,23 @@ struct PopoverRootView: View {
                 onSelect: { item in
                     store.copyClipboardItem(item)
                     onClose()
-                }
+                },
+                emptyIcon: "doc.on.clipboard",
+                emptyTitle: "暂无剪贴板记录",
+                emptySubtitle: "复制文本或图片后会出现在这里"
+            )
+            .transition(.opacity)
+        case .files:
+            ClipboardListView(
+                items: filteredFiles,
+                store: store,
+                onSelect: { item in
+                    store.copyClipboardItem(item)
+                    onClose()
+                },
+                emptyIcon: "doc",
+                emptyTitle: "暂无文件记录",
+                emptySubtitle: "在 Finder 中复制文件后会出现在这里"
             )
             .transition(.opacity)
         case .screenshots:
@@ -256,19 +287,20 @@ struct PopoverRootView: View {
 
             Spacer(minLength: 0)
 
-            Button(tab == .clipboard ? "清空" : "清空截图") {
-                if tab == .clipboard {
-                    store.clearClipboardHistory()
-                } else {
+            Button(clearButtonTitle) {
+                switch tab {
+                case .clipboard:
+                    store.clearClipboardHistory(kinds: [.text, .image])
+                case .files:
+                    store.clearClipboardHistory(kinds: [.file])
+                case .screenshots:
                     store.clearScreenshotHistory()
                 }
             }
             .buttonStyle(.plain)
             .font(.system(size: 11, weight: .medium))
             .foregroundStyle(PFTheme.inkSecondary)
-            .help(tab == .clipboard
-                  ? "清空未固定项；固定项会保留"
-                  : "只清除本 App 记录，不删除系统截图文件")
+            .help(clearHelp)
 
             Text("·")
                 .foregroundStyle(PFTheme.inkTertiary)
@@ -284,19 +316,59 @@ struct PopoverRootView: View {
         .padding(.vertical, 10)
     }
 
-    private var capacityLabel: String {
-        if tab == .clipboard {
-            return "\(store.clipboardItems.count)/\(HistoryStore.clipboardLimit)  ·  今日 \(store.todayClipboardCount)"
+    private var clearButtonTitle: String {
+        switch tab {
+        case .clipboard: return "清空"
+        case .files: return "清空文件"
+        case .screenshots: return "清空截图"
         }
-        return "\(store.screenshotItems.count)/\(HistoryStore.screenshotLimit)  ·  今日 \(store.todayScreenshotCount)"
+    }
+
+    private var clearHelp: String {
+        switch tab {
+        case .clipboard:
+            return "清空未固定的文本与图片；固定项会保留"
+        case .files:
+            return "清空未固定的文件记录；固定项会保留"
+        case .screenshots:
+            return "只清除本 App 记录，不删除系统截图文件"
+        }
+    }
+
+    private var capacityLabel: String {
+        switch tab {
+        case .clipboard:
+            return "\(clipboardOnlyItems.count)/\(HistoryStore.clipboardLimit)  ·  今日 \(store.todayClipboardCount)"
+        case .files:
+            return "\(fileOnlyItems.count)  ·  文件"
+        case .screenshots:
+            return "\(store.screenshotItems.count)/\(HistoryStore.screenshotLimit)  ·  今日 \(store.todayScreenshotCount)"
+        }
+    }
+
+    private var clipboardOnlyItems: [ClipboardHistoryItem] {
+        store.clipboardItems.filter { $0.kind != .file }
+    }
+
+    private var fileOnlyItems: [ClipboardHistoryItem] {
+        store.clipboardItems.filter { $0.kind == .file }
     }
 
     private var filteredClipboard: [ClipboardHistoryItem] {
+        filterClipboardItems(clipboardOnlyItems)
+    }
+
+    private var filteredFiles: [ClipboardHistoryItem] {
+        filterClipboardItems(fileOnlyItems)
+    }
+
+    private func filterClipboardItems(_ items: [ClipboardHistoryItem]) -> [ClipboardHistoryItem] {
         let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !q.isEmpty else { return store.clipboardItems }
-        return store.clipboardItems.filter {
+        guard !q.isEmpty else { return items }
+        return items.filter {
             $0.previewText.localizedCaseInsensitiveContains(q)
             || ($0.text?.localizedCaseInsensitiveContains(q) ?? false)
+            || ($0.filePath?.localizedCaseInsensitiveContains(q) ?? false)
         }
     }
 
