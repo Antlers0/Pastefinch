@@ -24,16 +24,17 @@ struct PopoverRootView: View {
             Divider()
             footer
         }
-        .frame(width: 400, height: 500)
+        .frame(width: 400, height: 520)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
     private var header: some View {
         VStack(spacing: 10) {
-            HStack {
+            HStack(alignment: .firstTextBaseline) {
                 Text("Pastefinch")
                     .font(.headline)
                 Spacer()
+                todayStatsChip
                 Button {
                     onClose()
                 } label: {
@@ -79,6 +80,23 @@ struct PopoverRootView: View {
         .padding(.bottom, 12)
     }
 
+    private var todayStatsChip: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "chart.bar.fill")
+                .font(.system(size: 10, weight: .semibold))
+            Text("今日 \(store.todayClipboardCount)+\(store.todayScreenshotCount)")
+                .font(.caption2.monospacedDigit())
+        }
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(
+            Capsule(style: .continuous)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
+        .help("今日捕获：剪贴板 \(store.todayClipboardCount) · 截图 \(store.todayScreenshotCount)")
+    }
+
     @ViewBuilder
     private var content: some View {
         switch tab {
@@ -104,29 +122,40 @@ struct PopoverRootView: View {
     }
 
     private var footer: some View {
-        HStack {
-            Text(tab == .clipboard
-                 ? "\(store.clipboardItems.count)/\(HistoryStore.clipboardLimit)"
-                 : "\(store.screenshotItems.count)/\(HistoryStore.screenshotLimit)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text("⌥⌘V")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-            Spacer()
-            Button(tab == .clipboard ? "清空剪贴板历史" : "清空截图历史") {
-                if tab == .clipboard {
-                    store.clearClipboardHistory()
-                } else {
-                    store.clearScreenshotHistory()
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(tab == .clipboard
+                     ? "\(store.clipboardItems.count)/\(HistoryStore.clipboardLimit)"
+                     : "\(store.screenshotItems.count)/\(HistoryStore.screenshotLimit)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text("⌥⌘V")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                Spacer()
+                Text("今日 剪贴板 \(store.todayClipboardCount) · 截图 \(store.todayScreenshotCount)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            HStack {
+                Spacer()
+                Button(tab == .clipboard ? "清空剪贴板历史" : "清空截图历史") {
+                    if tab == .clipboard {
+                        store.clearClipboardHistory()
+                    } else {
+                        store.clearScreenshotHistory()
+                    }
                 }
+                .controlSize(.small)
+                .help(tab == .clipboard
+                      ? "清空未固定项；固定项会保留"
+                      : "只清除本 App 记录，不删除系统截图文件")
+                Button("退出") {
+                    NSApp.terminate(nil)
+                }
+                .controlSize(.small)
             }
-            .controlSize(.small)
-            .help("只清除本 App 记录，不删除系统截图文件")
-            Button("退出") {
-                NSApp.terminate(nil)
-            }
-            .controlSize(.small)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)

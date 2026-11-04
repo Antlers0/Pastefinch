@@ -1,6 +1,8 @@
 import AppKit
 import SwiftUI
 import Carbon.HIToolbox
+import Combine
+import QuartzCore
 
 /// Borderless panels cannot become key by default, which blocks TextField focus.
 private final class KeyablePanel: NSPanel {
@@ -8,6 +10,7 @@ private final class KeyablePanel: NSPanel {
     override var canBecomeMain: Bool { true }
 }
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var panel: KeyablePanel?
@@ -17,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var resignKeyObserver: NSObjectProtocol?
     private var hotKeyRef: EventHotKeyRef?
     private var hotKeyHandler: EventHandlerRef?
+    private var cancellables = Set<AnyCancellable>()
 
     private let store = HistoryStore.shared
     private var clipboardMonitor: ClipboardMonitor?
@@ -35,12 +39,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupPanel()
         registerHotKey()
         setupLocalEscapeMonitor()
+        observeCaptureFeedback()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         clipboardMonitor?.stop()
         screenshotWatcher?.stop()
         stopOutsideClickMonitoring()
+        cancellables.removeAll()
         if let hotKeyRef {
             UnregisterEventHotKey(hotKeyRef)
         }
@@ -55,13 +61,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = item.button {
-            button.image = NSImage(systemSymbolName: "bird", accessibilityDescription: "Pastefinch")
-            button.image?.isTemplate = true
+            button.image = Self.birdImage()
             button.action = #selector(statusItemClicked(_:))
             button.target = self
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+            button.wantsLayer = true
         }
         statusItem = item
+    }
+
+    private func observeCaptureFeedback() {
+        store.$capturePulse
+            .dropFirst()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.playCopyFeedbackAnimation()
+            }
+            .store(in: &cancellables)
+    }
+
+    private func playCopyFeedbackAnimation() {
+        guard let button = statusItem?.button else { return }
+        button.wantsLayer = true
+
+        let bounce = CAKeyframeAnimation(keyPath: "transform.scale")
+        bounce.values = [1.0, 1.28, 0.92, 1.08, 1.0]
+        bounce.keyTimes = [0, 0.2, 0.45, 0.7, 1.0]
+        bounce.duration = 0.42
+        bounce.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        button.layer?.add(bounce, forKey: "pastefinch.chirp")
+
+        // Briefly swap to a filled glyph so the chirp is visible even at tiny sizes.
+        button.image = Self.birdImage(filled: true)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.42) { [weak button] in
+            button?.image = Self.birdImage(filled: false)
+        }
+    }
+
+    private static func birdImage(filled: Bool = false) -> NSImage? {
+        let preferred = filled ? "bird.fill" : "bird"
+        let image = NSImage(systemSymbolName: preferred, accessibilityDescription: "Pastefinch")
+            ?? NSImage(systemSymbolName: "bird", accessibilityDescription: "Pastefinch")
+        image?.isTemplate = true
+        return image
     }
 
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
@@ -88,7 +130,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupPanel() {
         let panel = KeyablePanel(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 500),
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 520),
             styleMask: [.borderless, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -107,7 +149,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.hidePanel()
         }
         let hosting = NSHostingView(rootView: root)
-        hosting.frame = NSRect(x: 0, y: 0, width: 400, height: 500)
+        hosting.frame = NSRect(x: 0, y: 0, width: 400, height: 520)
         panel.contentView = hosting
         panel.contentView?.wantsLayer = true
         panel.contentView?.layer?.cornerRadius = 12

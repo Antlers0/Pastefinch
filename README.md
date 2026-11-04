@@ -30,6 +30,10 @@ macOS only keeps the latest clipboard item. Pastefinch quietly remembers what yo
 | | Capability | Detail |
 | :---: | :--- | :--- |
 | 📋 | Clipboard | Text, images, files — searchable history |
+| 📌 | Pin | Keep favorites above the fold; protected from clear/trim |
+| 🎨 | Color preview | Detects `#RGB` / `rgb()` with swatch + HEX/RGB copy |
+| 🐦 | Chirp feedback | Menu-bar bird bounces on capture/copy |
+| 📊 | Today stats | Live clipboard + screenshot capture counts |
 | 🖼️ | Screenshots | Saved shots + clipboard captures |
 | ⌨️ | Hotkey | `⌥⌘V` to open or close the panel |
 | 🧹 | Cleanup | Delete one item, clear all, auto trim |

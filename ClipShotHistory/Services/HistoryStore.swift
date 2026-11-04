@@ -11,6 +11,10 @@ final class HistoryStore: ObservableObject {
 
     @Published private(set) var clipboardItems: [ClipboardHistoryItem] = []
     @Published private(set) var screenshotItems: [ScreenshotHistoryItem] = []
+    @Published private(set) var todayClipboardCount = 0
+    @Published private(set) var todayScreenshotCount = 0
+    /// Bumps whenever content is newly captured — menu bar uses this for chirp animation.
+    @Published private(set) var capturePulse: UInt = 0
 
     private let fileManager = FileManager.default
     private let encoder: JSONEncoder = {
@@ -30,6 +34,7 @@ final class HistoryStore: ObservableObject {
     private var imagesURL: URL
     private var thumbnailsURL: URL
     private var capturedURL: URL
+    private var dailyStats: DailyStats
 
     /// Skip recording the next clipboard change (after we write to pasteboard ourselves).
     private(set) var ignoreNextClipboardChange = false
@@ -49,6 +54,7 @@ final class HistoryStore: ObservableObject {
         try? fileManager.createDirectory(at: imagesURL, withIntermediateDirectories: true)
         try? fileManager.createDirectory(at: thumbnailsURL, withIntermediateDirectories: true)
         try? fileManager.createDirectory(at: capturedURL, withIntermediateDirectories: true)
+        dailyStats = DailyStats.empty(for: Self.todayKey())
         load()
     }
 
@@ -87,20 +93,18 @@ final class HistoryStore: ObservableObject {
         if let existingIndex = clipboardItems.firstIndex(where: { $0.contentHash == hash && $0.kind == .text }) {
             var item = clipboardItems.remove(at: existingIndex)
             item.createdAt = Date()
-            clipboardItems.insert(item, at: 0)
+            insertClipboard(item)
+            noteClipboardCapture()
             persistAndTrim()
             return true
         }
         let item = ClipboardHistoryItem(
-            id: UUID(),
-            createdAt: Date(),
             kind: .text,
             text: trimmed,
-            imageFileName: nil,
-            filePath: nil,
             contentHash: hash
         )
-        clipboardItems.insert(item, at: 0)
+        insertClipboard(item)
+        noteClipboardCapture()
         persistAndTrim()
         return true
     }
@@ -116,7 +120,8 @@ final class HistoryStore: ObservableObject {
         if let existingIndex = clipboardItems.firstIndex(where: { $0.contentHash == hash && $0.kind == .image }) {
             var item = clipboardItems.remove(at: existingIndex)
             item.createdAt = Date()
-            clipboardItems.insert(item, at: 0)
+            insertClipboard(item)
+            noteClipboardCapture()
             persistAndTrim()
             return true
         }
@@ -128,15 +133,12 @@ final class HistoryStore: ObservableObject {
             return false
         }
         let item = ClipboardHistoryItem(
-            id: UUID(),
-            createdAt: Date(),
             kind: .image,
-            text: nil,
             imageFileName: fileName,
-            filePath: nil,
             contentHash: hash
         )
-        clipboardItems.insert(item, at: 0)
+        insertClipboard(item)
+        noteClipboardCapture()
         persistAndTrim()
         return true
     }
@@ -147,20 +149,18 @@ final class HistoryStore: ObservableObject {
         if let existingIndex = clipboardItems.firstIndex(where: { $0.contentHash == hash && $0.kind == .file }) {
             var item = clipboardItems.remove(at: existingIndex)
             item.createdAt = Date()
-            clipboardItems.insert(item, at: 0)
+            insertClipboard(item)
+            noteClipboardCapture()
             persistAndTrim()
             return true
         }
         let item = ClipboardHistoryItem(
-            id: UUID(),
-            createdAt: Date(),
             kind: .file,
-            text: nil,
-            imageFileName: nil,
             filePath: path,
             contentHash: hash
         )
-        clipboardItems.insert(item, at: 0)
+        insertClipboard(item)
+        noteClipboardCapture()
         persistAndTrim()
         return true
     }
@@ -182,6 +182,23 @@ final class HistoryStore: ObservableObject {
                 pb.writeObjects([url as NSURL])
             }
         }
+        pulseCaptureFeedback()
+    }
+
+    func copyPlainString(_ text: String) {
+        markIgnoreNextClipboardChange()
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(text, forType: .string)
+        pulseCaptureFeedback()
+    }
+
+    func togglePin(_ item: ClipboardHistoryItem) {
+        guard let index = clipboardItems.firstIndex(where: { $0.id == item.id }) else { return }
+        clipboardItems[index].isPinned.toggle()
+        let updated = clipboardItems.remove(at: index)
+        insertClipboard(updated)
+        persist()
     }
 
     func deleteClipboardItem(_ item: ClipboardHistoryItem) {
@@ -194,12 +211,13 @@ final class HistoryStore: ObservableObject {
     }
 
     func clearClipboardHistory() {
-        for item in clipboardItems where item.kind == .image {
+        let pinned = clipboardItems.filter(\.isPinned)
+        for item in clipboardItems where item.kind == .image && !item.isPinned {
             if let name = item.imageFileName {
                 try? fileManager.removeItem(at: imageURL(for: name))
             }
         }
-        clipboardItems = []
+        clipboardItems = pinned
         persist()
     }
 
@@ -237,6 +255,7 @@ final class HistoryStore: ObservableObject {
             item.createdAt = Date()
             item.originalPath = originalURL.path
             screenshotItems.insert(item, at: 0)
+            noteScreenshotCapture()
             persistAndTrim()
             return true
         }
@@ -260,6 +279,7 @@ final class HistoryStore: ObservableObject {
             contentHash: hash
         )
         screenshotItems.insert(item, at: 0)
+        noteScreenshotCapture()
         persistAndTrim()
         return true
     }
@@ -271,6 +291,7 @@ final class HistoryStore: ObservableObject {
         let pb = NSPasteboard.general
         pb.clearContents()
         pb.writeObjects([image])
+        pulseCaptureFeedback()
     }
 
     func revealScreenshotInFinder(_ item: ScreenshotHistoryItem) {
@@ -304,10 +325,17 @@ final class HistoryStore: ObservableObject {
               let index = try? decoder.decode(HistoryIndex.self, from: data) else {
             clipboardItems = []
             screenshotItems = []
+            refreshTodayStatsPublished()
             return
         }
-        clipboardItems = index.clipboard
+        clipboardItems = sortClipboard(index.clipboard)
         screenshotItems = index.screenshots
+        if let saved = index.dailyStats, saved.day == Self.todayKey() {
+            dailyStats = saved
+        } else {
+            dailyStats = DailyStats.empty(for: Self.todayKey())
+        }
+        refreshTodayStatsPublished()
         persistAndTrim()
     }
 
@@ -318,11 +346,14 @@ final class HistoryStore: ObservableObject {
     }
 
     private func trimClipboard() {
-        while clipboardItems.count > Self.clipboardLimit {
-            let removed = clipboardItems.removeLast()
+        // Never auto-drop pinned items.
+        var unpinnedIndices = clipboardItems.indices.filter { !clipboardItems[$0].isPinned }
+        while clipboardItems.count > Self.clipboardLimit, let lastUnpinned = unpinnedIndices.last {
+            let removed = clipboardItems.remove(at: lastUnpinned)
             if let name = removed.imageFileName {
                 try? fileManager.removeItem(at: imageURL(for: name))
             }
+            unpinnedIndices = clipboardItems.indices.filter { !clipboardItems[$0].isPinned }
         }
     }
 
@@ -342,7 +373,11 @@ final class HistoryStore: ObservableObject {
     }
 
     private func persist() {
-        let index = HistoryIndex(clipboard: clipboardItems, screenshots: screenshotItems)
+        let index = HistoryIndex(
+            clipboard: clipboardItems,
+            screenshots: screenshotItems,
+            dailyStats: dailyStats
+        )
         do {
             let data = try encoder.encode(index)
             try data.write(to: indexURL, options: .atomic)
@@ -351,7 +386,63 @@ final class HistoryStore: ObservableObject {
         }
     }
 
+    // MARK: - Ordering / stats / feedback
+
+    private func insertClipboard(_ item: ClipboardHistoryItem) {
+        if item.isPinned {
+            clipboardItems.insert(item, at: 0)
+        } else {
+            let insertAt = clipboardItems.firstIndex(where: { !$0.isPinned }) ?? clipboardItems.count
+            clipboardItems.insert(item, at: insertAt)
+        }
+    }
+
+    private func sortClipboard(_ items: [ClipboardHistoryItem]) -> [ClipboardHistoryItem] {
+        let pinned = items.filter(\.isPinned).sorted { $0.createdAt > $1.createdAt }
+        let rest = items.filter { !$0.isPinned }.sorted { $0.createdAt > $1.createdAt }
+        return pinned + rest
+    }
+
+    private func noteClipboardCapture() {
+        ensureTodayStats()
+        dailyStats.clipboardCount += 1
+        refreshTodayStatsPublished()
+        pulseCaptureFeedback()
+    }
+
+    private func noteScreenshotCapture() {
+        ensureTodayStats()
+        dailyStats.screenshotCount += 1
+        refreshTodayStatsPublished()
+        pulseCaptureFeedback()
+    }
+
+    private func ensureTodayStats() {
+        let key = Self.todayKey()
+        if dailyStats.day != key {
+            dailyStats = DailyStats.empty(for: key)
+        }
+    }
+
+    private func refreshTodayStatsPublished() {
+        ensureTodayStats()
+        todayClipboardCount = dailyStats.clipboardCount
+        todayScreenshotCount = dailyStats.screenshotCount
+    }
+
+    private func pulseCaptureFeedback() {
+        capturePulse &+= 1
+    }
+
     // MARK: - Helpers
+
+    private static func todayKey() -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = .current
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: Date())
+    }
 
     private static func fileTimestamp() -> String {
         let formatter = DateFormatter()
